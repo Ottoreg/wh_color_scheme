@@ -4,13 +4,18 @@ Petite app mobile (une seule page HTML, sans build) pour aider à peindre des fi
 Warhammer. Basée sur la théorie des couleurs (roue chromatique) et associée aux
 peintures Citadel.
 
-## Deux usages
+## Trois usages
 
-1. **Mes couleurs** — tu choisis une ou plusieurs couleurs (ex. l'armure), l'app
+1. **Couleurs** — tu choisis une ou plusieurs couleurs (ex. l'armure), l'app
    propose les palettes harmonieuses associées : Complémentaire, Analogue,
-   Monochromatique, Split, Triadique, Carré.
-2. **Au hasard** — l'app tire une couleur au hasard mais construit une palette qui
+   Monochromatique, Split, Triadique, Carré. Chaque couleur de base se choisit
+   au **nuancier** (color picker) **ou en cherchant une peinture par son nom**
+   parmi les 3 marques.
+2. **Hasard** — l'app tire une couleur au hasard mais construit une palette qui
    respecte la règle d'harmonie choisie.
+3. **Inventaire** — tu listes les peintures que tu possèdes (sauvegardées dans le
+   navigateur) et l'app génère des color schemes **uniquement** avec tes
+   couleurs : chaque couleur cible est remplacée par ta peinture la plus proche.
 
 Chaque couleur proposée est reliée à la **peinture la plus proche** de la marque
 choisie. Marques supportées : **Citadel**, **Vallejo**, **Army Painter**, ou

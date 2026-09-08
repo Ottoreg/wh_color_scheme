@@ -86,6 +86,48 @@
     background:var(--gold); color:#231a0c; font-weight:700; font-size:13px; padding:10px 18px;
     border-radius:20px; opacity:0; pointer-events:none; transition:.25s; z-index:50}
   .toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  .btn2{width:100%; border:1px dashed var(--line); background:var(--bg2); color:var(--gold);
+    font-weight:700; font-size:14px; padding:12px; border-radius:12px; cursor:pointer; margin-bottom:12px}
+  .btn2:active{background:#2a2015}
+
+  /* pastille de couleur de base avec libellé */
+  .swatch-wrap{display:flex; flex-direction:column; align-items:center; gap:4px; width:56px}
+  .swatch-wrap .cap{font-size:9px; line-height:1.1; color:var(--muted); text-align:center;
+    max-width:56px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+
+  /* inventaire */
+  .inv-list{display:flex; flex-wrap:wrap; gap:8px}
+  .inv-item{display:flex; align-items:center; gap:7px; background:var(--card2); border:1px solid var(--line);
+    border-radius:20px; padding:5px 8px 5px 6px; font-size:12.5px; font-weight:600}
+  .inv-item .d{width:16px; height:16px; border-radius:50%; border:1px solid #0007; flex:none}
+  .inv-item .x{cursor:pointer; color:var(--muted); font-size:15px; line-height:1; padding:0 2px}
+  .inv-item .bl{color:var(--gold); font-size:9px; text-transform:uppercase; letter-spacing:.05em}
+  .inv-empty{color:var(--muted); font-size:13px}
+
+  /* fenêtre modale */
+  .modal{position:fixed; inset:0; background:#000b; display:flex; align-items:flex-end;
+    justify-content:center; z-index:100; padding:0}
+  .sheet{background:var(--bg2); border:1px solid var(--line); border-bottom:none;
+    border-radius:18px 18px 0 0; width:100%; max-width:560px; max-height:82vh; display:flex; flex-direction:column;
+    padding:14px 14px 20px}
+  .sheet-head{display:flex; gap:8px; align-items:center}
+  #search{flex:1; background:var(--card); border:1px solid var(--line); color:var(--text);
+    font-size:15px; padding:12px 14px; border-radius:12px; outline:none}
+  #search:focus{border-color:var(--gold)}
+  .closeX{background:var(--card); border:1px solid var(--line); color:var(--text); width:44px; height:44px;
+    border-radius:12px; font-size:16px; cursor:pointer; flex:none}
+  .modal-brand{margin:12px 0 6px}
+  .plist{overflow-y:auto; margin-top:6px; display:flex; flex-direction:column; gap:6px}
+  .pitem{display:flex; align-items:center; gap:11px; background:var(--card); border:1px solid var(--line);
+    border-radius:11px; padding:9px 11px; cursor:pointer}
+  .pitem:active{background:#332818}
+  .pitem .d{width:28px; height:28px; border-radius:7px; border:1px solid #0007; flex:none}
+  .pitem .nm{flex:1; font-size:14px; font-weight:600; min-width:0}
+  .pitem .bl{font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--gold); font-weight:700}
+  .pitem.owned{opacity:.5}
+  .pitem.owned .nm::after{content:" ✓"; color:var(--gold)}
+
   [hidden]{display:none!important}
 </style>
 </head>
@@ -98,14 +140,15 @@
 
 <div class="wrap">
   <div class="tabs">
-    <button class="tab active" data-mode="pick">🎨 Mes couleurs</button>
-    <button class="tab" data-mode="random">🎲 Au hasard</button>
+    <button class="tab active" data-mode="pick">🎨 Couleurs</button>
+    <button class="tab" data-mode="random">🎲 Hasard</button>
+    <button class="tab" data-mode="inventory">🧰 Inventaire</button>
   </div>
 
-  <div class="card">
+  <div class="card" id="brandCard">
     <p class="label">Marque de peinture</p>
     <div class="chips" id="brandChips"></div>
-    <p class="hint">« Toutes » affiche l'équivalent des trois marques, à la suite, pour chaque couleur.</p>
+    <p class="hint">« Toutes » affiche l'équivalent des trois marques, à la suite, pour chaque couleur. (Ne s'applique pas au mode Inventaire, qui utilise vos peintures.)</p>
   </div>
 
   <!-- MODE 1 : couleurs choisies -->
@@ -113,7 +156,7 @@
     <div class="card">
       <p class="label">1 · Choisis une ou plusieurs couleurs</p>
       <div class="colors" id="colorList"></div>
-      <p class="hint">Astuce : pars d'une couleur clé de ta figurine (armure, cape, peau…). L'app en déduit les couleurs qui vont bien avec.</p>
+      <p class="hint">Ajoute une couleur avec la pastille (nuancier) ou <b>＋ Peinture</b> pour la choisir par son nom parmi les 3 marques.</p>
     </div>
     <div class="card">
       <p class="label">2 · Type de palette</p>
@@ -132,6 +175,22 @@
     <button class="btn gold" id="genRandom">🎲 Générer une palette au hasard</button>
   </section>
 
+  <!-- MODE 3 : inventaire -->
+  <section id="inventoryMode" hidden>
+    <div class="card">
+      <p class="label">Mes peintures</p>
+      <button class="btn2" id="addPaintInv">＋ Ajouter des peintures</button>
+      <div class="inv-list" id="invList"></div>
+      <p class="hint" id="invCount"></p>
+    </div>
+    <div class="card">
+      <p class="label">Type de palette</p>
+      <div class="chips" id="invChips"></div>
+      <p class="hint">Les palettes sont construites uniquement avec les peintures que tu possèdes : chaque couleur cible est remplacée par ta peinture la plus proche.</p>
+    </div>
+    <button class="btn gold" id="genInv">🎨 Générer depuis mon inventaire</button>
+  </section>
+
   <div class="result" id="result">
     <div class="empty">Configure ci-dessus puis lance la génération.<br>Les couleurs proposées seront associées aux peintures les plus proches de la marque choisie.</div>
   </div>
@@ -140,6 +199,18 @@
     Correspondances = peinture la plus proche par marque (Citadel · Vallejo · Army Painter), valeurs approximatives.<br>
     Marques citées appartenant à leurs propriétaires respectifs. App non officielle.
   </footer>
+</div>
+
+<!-- Fenêtre de recherche de peinture -->
+<div class="modal" id="modal" hidden>
+  <div class="sheet">
+    <div class="sheet-head">
+      <input type="text" id="search" placeholder="Rechercher une peinture…" autocomplete="off">
+      <button class="closeX" id="closeModal">✕</button>
+    </div>
+    <div class="chips modal-brand" id="modalBrand"></div>
+    <div class="plist" id="plist"></div>
+  </div>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -220,6 +291,20 @@ function nearestPaint(hex,list,exclude){
   best=best||fb;                                         // si tout est déjà pris
   return{name:best[0],hex:best[1]};
 }
+// Catalogue complet, chaque entrée = {brand,name,hex}
+const CATALOG=[]
+  .concat(CITADEL.map(([n,h])=>({brand:"citadel",name:n,hex:h})))
+  .concat(VALLEJO.map(([n,h])=>({brand:"vallejo",name:n,hex:h})))
+  .concat(ARMYPAINTER.map(([n,h])=>({brand:"armypainter",name:n,hex:h})));
+// Plus proche dans un pool d'objets {brand,name,hex}, en évitant les clés déjà prises
+function nearestInPool(hex,pool,exclude){
+  const a=hexToRgb(hex);let best=null,bd=Infinity,fb=null,fd=Infinity;
+  for(const p of pool){const d=colorDist(a,p.hex);const key=p.brand+"|"+p.name;
+    if(d<fd){fd=d;fb=p;}
+    if(exclude&&exclude.has(key))continue;
+    if(d<bd){bd=d;best=p;}}
+  return best||fb;
+}
 
 /* ---------- Définition des harmonies ---------- */
 const HARMONIES={
@@ -253,10 +338,18 @@ function buildPalette(baseHex,key){
 
 /* ---------- État & UI ---------- */
 const $=s=>document.querySelector(s);
-let baseColors=["#2a63b0"]; // Altdorf Guard Blue par défaut
+let baseColors=[{hex:"#2a63b0"}]; // {hex, name?, brand?}
 let pickHarmony="all";
 let randHarmony="random";
+let invHarmony="random";
 let brand="citadel";        // citadel | vallejo | armypainter | all
+let modalBrand="all";       // filtre marque dans la fenêtre de recherche
+
+/* Inventaire (persistant) : liste de {brand,name,hex} */
+let INV=[];
+try{const s=localStorage.getItem("wh_inventory"); if(s) INV=JSON.parse(s)||[];}catch(e){}
+function saveInv(){try{localStorage.setItem("wh_inventory",JSON.stringify(INV));}catch(e){}}
+function invHas(p){return INV.some(x=>x.brand===p.brand&&x.name===p.name);}
 
 function renderBrandChips(){
   const box=$("#brandChips");box.innerHTML="";
@@ -272,69 +365,95 @@ function renderBrandChips(){
 function renderColorInputs(){
   const box=$("#colorList");box.innerHTML="";
   baseColors.forEach((c,i)=>{
-    const w=document.createElement("div");w.className="swatch-in";w.style.background=c;
-    w.innerHTML=`<input type="color" value="${c}"><span class="rm">×</span>`;
-    w.querySelector("input").addEventListener("input",e=>{baseColors[i]=e.target.value;w.style.background=e.target.value;});
+    const wrap=document.createElement("div");wrap.className="swatch-wrap";
+    const w=document.createElement("div");w.className="swatch-in";w.style.background=c.hex;
+    w.innerHTML=`<input type="color" value="${c.hex}"><span class="rm">×</span>`;
+    w.querySelector("input").addEventListener("input",e=>{
+      baseColors[i]={hex:e.target.value};w.style.background=e.target.value;
+      wrap.querySelector(".cap").textContent=e.target.value.toUpperCase();
+    });
     w.querySelector(".rm").addEventListener("click",e=>{e.stopPropagation();if(baseColors.length>1){baseColors.splice(i,1);renderColorInputs();}});
-    box.appendChild(w);
+    const cap=document.createElement("div");cap.className="cap";
+    cap.textContent=c.name?c.name:c.hex.toUpperCase();
+    wrap.appendChild(w);wrap.appendChild(cap);box.appendChild(wrap);
   });
-  if(baseColors.length<4){
+  if(baseColors.length<6){
+    const wrap=document.createElement("div");wrap.className="swatch-wrap";
     const add=document.createElement("button");add.className="addbtn";add.textContent="+";
-    add.onclick=()=>{baseColors.push(hslToHex(Math.random()*360,65,50));renderColorInputs();};
-    box.appendChild(add);
+    add.title="Nuancier";
+    add.onclick=()=>{baseColors.push({hex:hslToHex(Math.random()*360,65,50)});renderColorInputs();};
+    const cap=document.createElement("div");cap.className="cap";cap.textContent="Nuancier";
+    wrap.appendChild(add);wrap.appendChild(cap);box.appendChild(wrap);
+
+    const wrap2=document.createElement("div");wrap2.className="swatch-wrap";
+    const addp=document.createElement("button");addp.className="addbtn";addp.textContent="🎨";
+    addp.title="Depuis une peinture";
+    addp.onclick=()=>openModal(p=>{baseColors.push({hex:p.hex,name:p.name,brand:p.brand});renderColorInputs();});
+    const cap2=document.createElement("div");cap2.className="cap";cap2.textContent="＋ Peinture";
+    wrap2.appendChild(addp);wrap2.appendChild(cap2);box.appendChild(wrap2);
   }
 }
 
+const HGET={pick:()=>pickHarmony, rand:()=>randHarmony, inv:()=>invHarmony};
+const HSET={pick:v=>pickHarmony=v, rand:v=>randHarmony=v, inv:v=>invHarmony=v};
 function renderChips(container,harmonyVar,extra){
   const box=$(container);box.innerHTML="";
   const entries=[...extra,...Object.entries(HARMONIES).map(([k,v])=>[k,v.name])];
-  const current=harmonyVar==='pick'?pickHarmony:randHarmony;
+  const current=HGET[harmonyVar]();
   entries.forEach(([k,label])=>{
     const c=document.createElement("button");c.className="chip"+(k===current?" active":"");
     c.textContent=label;
-    c.onclick=()=>{if(harmonyVar==='pick')pickHarmony=k;else randHarmony=k;renderChips(container,harmonyVar,extra);};
+    c.onclick=()=>{HSET[harmonyVar](k);renderChips(container,harmonyVar,extra);};
     box.appendChild(c);
   });
 }
 
 function activeBrands(){return brand==="all"?["citadel","vallejo","armypainter"]:[brand];}
 
-// `used` = { brandKey: Set(noms déjà proposés) } pour éviter les doublons dans une même palette
-function paintRow(hex,role,used){
-  const picks=activeBrands().map(b=>{
-    const p=nearestPaint(hex,BRANDS[b],used[b]);
-    used[b].add(p.name);
-    return {b,...p};
-  });
+// ctx: {type:'brand'} ou {type:'inv', pool:[{brand,name,hex}]}
+// used: Sets par marque + 'inv' pour éviter les doublons dans une même palette
+function paintRow(hex,role,used,ctx){
+  let picks; // [{brand,name,hex}]
+  if(ctx.type==='inv'){
+    const p=nearestInPool(hex,ctx.pool,used.inv);
+    used.inv.add(p.brand+"|"+p.name);
+    picks=[{brand:p.brand,name:p.name,hex:p.hex}];
+  }else{
+    picks=activeBrands().map(b=>{const p=nearestPaint(hex,BRANDS[b],used[b]);used[b].add(p.name);return {brand:b,...p};});
+  }
+  const multi=picks.length>1;
+  const showBrand = ctx.type==='inv' || brand==="all";
   const div=document.createElement("div");div.className="paint";
-  const dotHex = brand==="all" ? hex : picks[0].hex;
+  const dotHex = multi ? hex : picks[0].hex;
   let namesHtml;
-  if(brand==="all"){
-    namesHtml=`<div class="allnames">`+picks.map(p=>
-      `<span class="bn"><em>${BRAND_LABEL[p.b]}</em> ${p.name}</span>`).join("")+`</div>`;
+  if(multi){
+    namesHtml=`<div class="allnames">`+picks.map(p=>`<span class="bn"><em>${BRAND_LABEL[p.brand]}</em> ${p.name}</span>`).join("")+`</div>`;
+  }else if(showBrand){
+    namesHtml=`<div class="bn"><em>${BRAND_LABEL[picks[0].brand]}</em> ${picks[0].name}</div>`;
   }else{
     namesHtml=`<div class="name">${picks[0].name}</div>`;
   }
-  const meta = brand==="all"
-    ? `cible ${hex.toUpperCase()}`
-    : `${picks[0].hex.toUpperCase()} · cible ${hex.toUpperCase()}`;
+  const meta = multi ? `cible ${hex.toUpperCase()}` : `${picks[0].hex.toUpperCase()} · cible ${hex.toUpperCase()}`;
   div.innerHTML=`<div class="dot" style="background:${dotHex}"></div>
     <div class="info">${namesHtml}<div class="meta">${meta}</div></div>
     <div class="role">${role}</div>`;
-  div.onclick=()=>copy(picks.map(p=>BRAND_LABEL[p.b]+" : "+p.name).join("  |  "));
+  div.onclick=()=>copy(picks.map(p=>BRAND_LABEL[p.brand]+" : "+p.name).join("  |  "));
   return div;
 }
 
-function renderPalette(baseHex,key){
+function renderPalette(baseHex,key,opts){
+  opts=opts||{};
+  const ctx = opts.inventory ? {type:'inv',pool:INV} : {type:'brand'};
   const H=HARMONIES[key];
   const cols=buildPalette(baseHex,key);
   const pal=document.createElement("div");pal.className="pal";
   const strip=cols.map(c=>`<div style="background:${c}"></div>`).join("");
-  pal.innerHTML=`<div class="pal-head"><h3>${H.name}</h3><span class="base">base ${baseHex.toUpperCase()}</span></div>
+  const baseLabel=opts.baseLabel||("base "+baseHex.toUpperCase());
+  pal.innerHTML=`<div class="pal-head"><h3>${H.name}</h3><span class="base">${baseLabel}</span></div>
     <p class="pal-desc">${H.desc}</p><div class="strip">${strip}</div>`;
   const paints=document.createElement("div");paints.className="paints";
-  const used={citadel:new Set(),vallejo:new Set(),armypainter:new Set()};
-  cols.forEach((c,i)=>paints.appendChild(paintRow(c,roleFor(i,cols.length),used)));
+  const used={citadel:new Set(),vallejo:new Set(),armypainter:new Set(),inv:new Set()};
+  cols.forEach((c,i)=>paints.appendChild(paintRow(c,roleFor(i,cols.length),used,ctx)));
   pal.appendChild(paints);
   return pal;
 }
@@ -346,41 +465,102 @@ function showResult(nodes){
   r.scrollIntoView({behavior:"smooth",block:"start"});
 }
 
+const randKey=v=>v==="random"?Object.keys(HARMONIES)[Math.floor(Math.random()*6)]:v;
+
 /* Boutons */
 $("#genPick").onclick=()=>{
   const keys=pickHarmony==="all"?Object.keys(HARMONIES):[pickHarmony];
   const nodes=[];
-  baseColors.forEach(base=>keys.forEach(k=>nodes.push(renderPalette(base,k))));
+  baseColors.forEach(base=>keys.forEach(k=>nodes.push(renderPalette(base.hex,k))));
   showResult(nodes);
 };
 $("#genRandom").onclick=()=>{
-  const key=randHarmony==="random"?Object.keys(HARMONIES)[Math.floor(Math.random()*6)]:randHarmony;
   const base=hslToHex(Math.random()*360,55+Math.random()*30,42+Math.random()*16);
-  showResult([renderPalette(base,key)]);
+  showResult([renderPalette(base,randKey(randHarmony))]);
 };
+$("#genInv").onclick=()=>{
+  if(INV.length<2){showResult([]);$("#result").innerHTML='<div class="empty">Ajoute au moins 2 peintures à ton inventaire pour générer un schéma.</div>';return;}
+  const start=INV[Math.floor(Math.random()*INV.length)];
+  showResult([renderPalette(start.hex,randKey(invHarmony),{inventory:true,baseLabel:"base "+start.name})]);
+};
+
+/* Inventaire */
+function renderInventory(){
+  const box=$("#invList");box.innerHTML="";
+  if(!INV.length){box.innerHTML='<span class="inv-empty">Aucune peinture. Clique sur « Ajouter des peintures ».</span>';}
+  INV.forEach((p,i)=>{
+    const el=document.createElement("div");el.className="inv-item";
+    el.innerHTML=`<span class="d" style="background:${p.hex}"></span>
+      <span><span class="bl">${BRAND_LABEL[p.brand]}</span> ${p.name}</span><span class="x">×</span>`;
+    el.querySelector(".x").onclick=()=>{INV.splice(i,1);saveInv();renderInventory();};
+    box.appendChild(el);
+  });
+  $("#invCount").textContent=INV.length?`${INV.length} peinture(s) dans ton inventaire.`:"";
+}
+
+/* Fenêtre de recherche de peinture */
+let modalPick=null;
+function renderModalBrand(){
+  const box=$("#modalBrand");box.innerHTML="";
+  [["all","Toutes"],["citadel","Citadel"],["vallejo","Vallejo"],["armypainter","Army Painter"]].forEach(([k,l])=>{
+    const c=document.createElement("button");c.className="chip"+(k===modalBrand?" active":"");c.textContent=l;
+    c.onclick=()=>{modalBrand=k;renderModalBrand();renderPlist();};
+    box.appendChild(c);
+  });
+}
+function renderPlist(){
+  const q=$("#search").value.trim().toLowerCase();
+  const box=$("#plist");box.innerHTML="";
+  const list=CATALOG.filter(p=>(modalBrand==="all"||p.brand===modalBrand)&&p.name.toLowerCase().includes(q)).slice(0,120);
+  list.forEach(p=>{
+    const el=document.createElement("div");el.className="pitem"+(invHas(p)?" owned":"");
+    el.innerHTML=`<span class="d" style="background:${p.hex}"></span>
+      <span class="nm">${p.name}</span><span class="bl">${BRAND_LABEL[p.brand]}</span>`;
+    el.onclick=()=>modalPick&&modalPick(p);
+    box.appendChild(el);
+  });
+  if(!list.length)box.innerHTML='<span class="inv-empty">Aucune peinture trouvée.</span>';
+}
+function openModal(onPick){
+  modalPick=onPick;$("#search").value="";modalBrand="all";
+  renderModalBrand();renderPlist();$("#modal").hidden=false;
+  setTimeout(()=>$("#search").focus(),50);
+}
+function closeModal(){$("#modal").hidden=true;modalPick=null;}
+$("#closeModal").onclick=closeModal;
+$("#modal").onclick=e=>{if(e.target===$("#modal"))closeModal();};
+$("#search").addEventListener("input",renderPlist);
+$("#addPaintInv").onclick=()=>openModal(p=>{
+  if(!invHas(p)){INV.push({brand:p.brand,name:p.name,hex:p.hex});saveInv();renderInventory();
+    toast("Ajouté : "+p.name);renderPlist();}
+  else{INV=INV.filter(x=>!(x.brand===p.brand&&x.name===p.name));saveInv();renderInventory();renderPlist();}
+});
 
 /* Onglets */
 document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
   document.querySelectorAll(".tab").forEach(x=>x.classList.remove("active"));
   t.classList.add("active");
-  const pick=t.dataset.mode==="pick";
-  $("#pickMode").hidden=!pick;$("#randomMode").hidden=pick;
+  const m=t.dataset.mode;
+  $("#pickMode").hidden=m!=="pick";
+  $("#randomMode").hidden=m!=="random";
+  $("#inventoryMode").hidden=m!=="inventory";
+  $("#brandCard").hidden=m==="inventory";
   $("#result").innerHTML='<div class="empty">Configure ci-dessus puis lance la génération.</div>';
 });
 
 /* Copier + toast */
 let tt;
-function copy(txt){
-  navigator.clipboard?.writeText(txt).catch(()=>{});
-  const el=$("#toast");el.textContent="Copié : "+txt;el.classList.add("show");
-  clearTimeout(tt);tt=setTimeout(()=>el.classList.remove("show"),1500);
-}
+function toast(txt){const el=$("#toast");el.textContent=txt;el.classList.add("show");
+  clearTimeout(tt);tt=setTimeout(()=>el.classList.remove("show"),1500);}
+function copy(txt){navigator.clipboard?.writeText(txt).catch(()=>{});toast("Copié : "+txt);}
 
 /* Init */
 renderColorInputs();
 renderBrandChips();
+renderInventory();
 renderChips("#pickChips","pick",[["all","Toutes"]]);
 renderChips("#randChips","rand",[["random","Surprise 🎲"]]);
+renderChips("#invChips","inv",[["random","Surprise 🎲"]]);
 </script>
 </body>
 </html>
