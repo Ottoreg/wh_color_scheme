@@ -24,10 +24,11 @@
   header p{margin:0; color:var(--muted); font-size:13px}
   .wrap{max-width:560px; margin:0 auto; padding:0 16px}
 
-  .tabs{display:flex; gap:8px; background:var(--bg2); border:1px solid var(--line);
+  .tabs{display:flex; gap:5px; background:var(--bg2); border:1px solid var(--line);
     padding:5px; border-radius:14px; margin:14px 0}
   .tab{flex:1; border:none; background:transparent; color:var(--muted); font-weight:700;
-    font-size:14px; padding:11px 6px; border-radius:10px; cursor:pointer; transition:.15s}
+    font-size:12px; padding:10px 3px; border-radius:10px; cursor:pointer; transition:.15s;
+    white-space:nowrap; letter-spacing:-.01em}
   .tab.active{background:linear-gradient(180deg,var(--gold2),var(--gold)); color:#231a0c;
     box-shadow:0 2px 10px rgba(201,162,75,.25)}
 
@@ -105,6 +106,25 @@
   .inv-item .bl{color:var(--gold); font-size:9px; text-transform:uppercase; letter-spacing:.05em}
   .inv-empty{color:var(--muted); font-size:13px}
 
+  /* bouton enregistrer sur une palette */
+  .pal-head{align-items:center}
+  .saveBtn{border:1px solid var(--gold); background:transparent; color:var(--gold2); font-weight:700;
+    font-size:12px; padding:6px 10px; border-radius:9px; cursor:pointer; white-space:nowrap}
+  .saveBtn:active{background:#2a2015}
+
+  /* palettes enregistrées */
+  .saved-list{display:flex; flex-direction:column; gap:12px}
+  .saved{background:var(--card2); border:1px solid var(--line); border-radius:12px; padding:10px}
+  .saved-strip{display:flex; border-radius:8px; overflow:hidden; border:1px solid #0006; margin-bottom:8px}
+  .saved-strip div{flex:1; height:26px}
+  .saved-title{font-size:14px; font-weight:700}
+  .saved-names{font-size:11px; color:var(--muted); margin-top:2px; line-height:1.35}
+  .saved-bar{display:flex; gap:8px; margin-top:10px}
+  .mini{flex:1; border:1px solid var(--line); background:var(--bg2); color:var(--text); font-weight:600;
+    font-size:12px; padding:8px; border-radius:9px; cursor:pointer}
+  .mini.danger{color:#e88; border-color:#5a2a26; flex:0 0 auto; padding:8px 12px}
+  .mini:active{background:#2a2015}
+
   /* fenêtre modale */
   .modal{position:fixed; inset:0; background:#000b; display:flex; align-items:flex-end;
     justify-content:center; z-index:100; padding:0}
@@ -142,6 +162,7 @@
   <div class="tabs">
     <button class="tab active" data-mode="pick">🎨 Couleurs</button>
     <button class="tab" data-mode="random">🎲 Hasard</button>
+    <button class="tab" data-mode="custom">✏️ Créer</button>
     <button class="tab" data-mode="inventory">🧰 Inventaire</button>
   </div>
 
@@ -175,7 +196,17 @@
     <button class="btn gold" id="genRandom">🎲 Générer une palette au hasard</button>
   </section>
 
-  <!-- MODE 3 : inventaire -->
+  <!-- MODE 3 : créer (libre) -->
+  <section id="customMode" hidden>
+    <div class="card">
+      <p class="label">Ma palette (libre)</p>
+      <div class="colors" id="customList"></div>
+      <p class="hint">Ajoute les couleurs de ton choix (nuancier ou ＋ Peinture). Aucune règle d'harmonie n'est appliquée — c'est toi qui décides. Utilise « 💾 Enregistrer » pour la garder dans l'inventaire.</p>
+    </div>
+    <button class="btn" id="genCustom">Afficher ma palette</button>
+  </section>
+
+  <!-- MODE 4 : inventaire -->
   <section id="inventoryMode" hidden>
     <div class="card">
       <p class="label">Mes peintures</p>
@@ -189,6 +220,11 @@
       <p class="hint">Les palettes sont construites uniquement avec les peintures que tu possèdes : chaque couleur cible est remplacée par ta peinture la plus proche.</p>
     </div>
     <button class="btn gold" id="genInv">🎨 Générer depuis mon inventaire</button>
+
+    <div class="card" style="margin-top:14px">
+      <p class="label">Mes palettes enregistrées</p>
+      <div class="saved-list" id="savedList"></div>
+    </div>
   </section>
 
   <div class="result" id="result">
@@ -350,6 +386,13 @@ let INV=[];
 try{const s=localStorage.getItem("wh_inventory"); if(s) INV=JSON.parse(s)||[];}catch(e){}
 function saveInv(){try{localStorage.setItem("wh_inventory",JSON.stringify(INV));}catch(e){}}
 function invHas(p){return INV.some(x=>x.brand===p.brand&&x.name===p.name);}
+function invAdd(p){if(!invHas(p)){INV.push({brand:p.brand,name:p.name,hex:p.hex});return true;}return false;}
+
+/* Palette personnalisée (mode Créer) + palettes enregistrées (persistantes) */
+let customColors=[{hex:"#8a2b1e"},{hex:"#c9a24b"},{hex:"#2a63b0"}];
+let SAVED=[];
+try{const s=localStorage.getItem("wh_palettes"); if(s) SAVED=JSON.parse(s)||[];}catch(e){}
+function saveSaved(){try{localStorage.setItem("wh_palettes",JSON.stringify(SAVED));}catch(e){}}
 
 function renderBrandChips(){
   const box=$("#brandChips");box.innerHTML="";
@@ -362,37 +405,39 @@ function renderBrandChips(){
   });
 }
 
-function renderColorInputs(){
-  const box=$("#colorList");box.innerHTML="";
-  baseColors.forEach((c,i)=>{
+// Rendu générique de pastilles éditables pour un tableau `list` de {hex,name?,brand?}
+function renderSwatches(list,containerSel,max,minKeep){
+  const box=$(containerSel);box.innerHTML="";
+  const rerender=()=>renderSwatches(list,containerSel,max,minKeep);
+  list.forEach((c,i)=>{
     const wrap=document.createElement("div");wrap.className="swatch-wrap";
     const w=document.createElement("div");w.className="swatch-in";w.style.background=c.hex;
     w.innerHTML=`<input type="color" value="${c.hex}"><span class="rm">×</span>`;
     w.querySelector("input").addEventListener("input",e=>{
-      baseColors[i]={hex:e.target.value};w.style.background=e.target.value;
+      list[i]={hex:e.target.value};w.style.background=e.target.value;
       wrap.querySelector(".cap").textContent=e.target.value.toUpperCase();
     });
-    w.querySelector(".rm").addEventListener("click",e=>{e.stopPropagation();if(baseColors.length>1){baseColors.splice(i,1);renderColorInputs();}});
+    w.querySelector(".rm").addEventListener("click",e=>{e.stopPropagation();if(list.length>minKeep){list.splice(i,1);rerender();}});
     const cap=document.createElement("div");cap.className="cap";
     cap.textContent=c.name?c.name:c.hex.toUpperCase();
     wrap.appendChild(w);wrap.appendChild(cap);box.appendChild(wrap);
   });
-  if(baseColors.length<6){
+  if(list.length<max){
     const wrap=document.createElement("div");wrap.className="swatch-wrap";
-    const add=document.createElement("button");add.className="addbtn";add.textContent="+";
-    add.title="Nuancier";
-    add.onclick=()=>{baseColors.push({hex:hslToHex(Math.random()*360,65,50)});renderColorInputs();};
+    const add=document.createElement("button");add.className="addbtn";add.textContent="+";add.title="Nuancier";
+    add.onclick=()=>{list.push({hex:hslToHex(Math.random()*360,65,50)});rerender();};
     const cap=document.createElement("div");cap.className="cap";cap.textContent="Nuancier";
     wrap.appendChild(add);wrap.appendChild(cap);box.appendChild(wrap);
 
     const wrap2=document.createElement("div");wrap2.className="swatch-wrap";
-    const addp=document.createElement("button");addp.className="addbtn";addp.textContent="🎨";
-    addp.title="Depuis une peinture";
-    addp.onclick=()=>openModal(p=>{baseColors.push({hex:p.hex,name:p.name,brand:p.brand});renderColorInputs();});
+    const addp=document.createElement("button");addp.className="addbtn";addp.textContent="🎨";addp.title="Depuis une peinture";
+    addp.onclick=()=>openModal(p=>{list.push({hex:p.hex,name:p.name,brand:p.brand});rerender();});
     const cap2=document.createElement("div");cap2.className="cap";cap2.textContent="＋ Peinture";
     wrap2.appendChild(addp);wrap2.appendChild(cap2);box.appendChild(wrap2);
   }
 }
+function renderColorInputs(){renderSwatches(baseColors,"#colorList",6,1);}
+function renderCustomInputs(){renderSwatches(customColors,"#customList",10,1);}
 
 const HGET={pick:()=>pickHarmony, rand:()=>randHarmony, inv:()=>invHarmony};
 const HSET={pick:v=>pickHarmony=v, rand:v=>randHarmony=v, inv:v=>invHarmony=v};
@@ -409,22 +454,23 @@ function renderChips(container,harmonyVar,extra){
 }
 
 function activeBrands(){return brand==="all"?["citadel","vallejo","armypainter"]:[brand];}
+function newUsed(){return {citadel:new Set(),vallejo:new Set(),armypainter:new Set(),inv:new Set()};}
 
-// ctx: {type:'brand'} ou {type:'inv', pool:[{brand,name,hex}]}
-// used: Sets par marque + 'inv' pour éviter les doublons dans une même palette
-function paintRow(hex,role,used,ctx){
-  let picks; // [{brand,name,hex}]
+// Détermine les peintures proposées pour une couleur cible.
+// ctx: {type:'brand'} ou {type:'inv',pool} ; renvoie [{brand,name,hex}]
+function buildPicks(hex,ctx,used){
   if(ctx.type==='inv'){
-    const p=nearestInPool(hex,ctx.pool,used.inv);
-    used.inv.add(p.brand+"|"+p.name);
-    picks=[{brand:p.brand,name:p.name,hex:p.hex}];
-  }else{
-    picks=activeBrands().map(b=>{const p=nearestPaint(hex,BRANDS[b],used[b]);used[b].add(p.name);return {brand:b,...p};});
+    const p=nearestInPool(hex,ctx.pool,used.inv);used.inv.add(p.brand+"|"+p.name);
+    return [{brand:p.brand,name:p.name,hex:p.hex}];
   }
+  return activeBrands().map(b=>{const p=nearestPaint(hex,BRANDS[b],used[b]);used[b].add(p.name);return {brand:b,...p};});
+}
+
+// Construit une ligne d'affichage à partir de picks déjà résolus
+function paintRowFromPicks(targetHex,role,picks,showBrand){
   const multi=picks.length>1;
-  const showBrand = ctx.type==='inv' || brand==="all";
   const div=document.createElement("div");div.className="paint";
-  const dotHex = multi ? hex : picks[0].hex;
+  const dotHex = multi ? targetHex : picks[0].hex;
   let namesHtml;
   if(multi){
     namesHtml=`<div class="allnames">`+picks.map(p=>`<span class="bn"><em>${BRAND_LABEL[p.brand]}</em> ${p.name}</span>`).join("")+`</div>`;
@@ -433,7 +479,7 @@ function paintRow(hex,role,used,ctx){
   }else{
     namesHtml=`<div class="name">${picks[0].name}</div>`;
   }
-  const meta = multi ? `cible ${hex.toUpperCase()}` : `${picks[0].hex.toUpperCase()} · cible ${hex.toUpperCase()}`;
+  const meta = multi ? `cible ${targetHex.toUpperCase()}` : `${picks[0].hex.toUpperCase()} · cible ${targetHex.toUpperCase()}`;
   div.innerHTML=`<div class="dot" style="background:${dotHex}"></div>
     <div class="info">${namesHtml}<div class="meta">${meta}</div></div>
     <div class="role">${role}</div>`;
@@ -441,21 +487,50 @@ function paintRow(hex,role,used,ctx){
   return div;
 }
 
+// Carte palette avec bouton « Enregistrer ». save = {title, items:[{hex,brand,name}]}
+function palCard(title,desc,cols,rows,save){
+  const pal=document.createElement("div");pal.className="pal";
+  const head=document.createElement("div");head.className="pal-head";
+  head.innerHTML=`<h3>${title}</h3>`;
+  const btn=document.createElement("button");btn.className="saveBtn";btn.textContent="💾 Enregistrer";
+  btn.onclick=()=>savePalette(save.title,save.items);
+  head.appendChild(btn);pal.appendChild(head);
+  const body=document.createElement("div");
+  body.innerHTML=`<p class="pal-desc">${desc}</p><div class="strip">${cols.map(c=>`<div style="background:${c}"></div>`).join("")}</div>`;
+  pal.appendChild(body);
+  const paints=document.createElement("div");paints.className="paints";
+  rows.forEach(r=>paints.appendChild(r));
+  pal.appendChild(paints);
+  return pal;
+}
+
 function renderPalette(baseHex,key,opts){
   opts=opts||{};
   const ctx = opts.inventory ? {type:'inv',pool:INV} : {type:'brand'};
   const H=HARMONIES[key];
   const cols=buildPalette(baseHex,key);
-  const pal=document.createElement("div");pal.className="pal";
-  const strip=cols.map(c=>`<div style="background:${c}"></div>`).join("");
-  const baseLabel=opts.baseLabel||("base "+baseHex.toUpperCase());
-  pal.innerHTML=`<div class="pal-head"><h3>${H.name}</h3><span class="base">${baseLabel}</span></div>
-    <p class="pal-desc">${H.desc}</p><div class="strip">${strip}</div>`;
-  const paints=document.createElement("div");paints.className="paints";
-  const used={citadel:new Set(),vallejo:new Set(),armypainter:new Set(),inv:new Set()};
-  cols.forEach((c,i)=>paints.appendChild(paintRow(c,roleFor(i,cols.length),used,ctx)));
-  pal.appendChild(paints);
-  return pal;
+  const used=newUsed();const rows=[];const items=[];
+  const showBrand = ctx.type==='inv' || brand==="all";
+  cols.forEach((c,i)=>{
+    const picks=buildPicks(c,ctx,used);
+    items.push({hex:c,brand:picks[0].brand,name:picks[0].name});
+    rows.push(paintRowFromPicks(c,roleFor(i,cols.length),picks,showBrand));
+  });
+  const label=opts.baseLabel||("base "+baseHex.toUpperCase());
+  return palCard(H.name+" · "+label,H.desc,cols,rows,{title:H.name+" — "+label,items});
+}
+
+// Mode Créer : palette libre, sans règle d'harmonie
+function renderCustomPalette(entries){
+  const used=newUsed();const rows=[];const items=[];const cols=entries.map(e=>e.hex);
+  entries.forEach((e,i)=>{
+    let picks;
+    if(e.name&&e.brand){picks=[{brand:e.brand,name:e.name,hex:e.hex}];}   // peinture explicitement choisie
+    else{picks=buildPicks(e.hex,{type:'brand'},used);}                    // équivalent le plus proche
+    items.push({hex:e.hex,brand:picks[0].brand,name:picks[0].name});
+    rows.push(paintRowFromPicks(e.hex,"Couleur "+(i+1),picks,true));
+  });
+  return palCard("Ma palette","Palette personnalisée — libre choix, sans règle d'harmonie.",cols,rows,{title:"Ma palette",items});
 }
 
 function showResult(nodes){
@@ -463,6 +538,12 @@ function showResult(nodes){
   if(!nodes.length){r.innerHTML='<div class="empty">Aucun résultat.</div>';return;}
   nodes.forEach(n=>r.appendChild(n));
   r.scrollIntoView({behavior:"smooth",block:"start"});
+}
+
+/* Enregistrement de palettes dans l'inventaire */
+function savePalette(title,items){
+  SAVED.unshift({id:Date.now(),title,items});saveSaved();renderSaved();
+  toast("Palette enregistrée dans l'inventaire");
 }
 
 const randKey=v=>v==="random"?Object.keys(HARMONIES)[Math.floor(Math.random()*6)]:v;
@@ -483,8 +564,12 @@ $("#genInv").onclick=()=>{
   const start=INV[Math.floor(Math.random()*INV.length)];
   showResult([renderPalette(start.hex,randKey(invHarmony),{inventory:true,baseLabel:"base "+start.name})]);
 };
+$("#genCustom").onclick=()=>{
+  if(customColors.length<1){showResult([]);return;}
+  showResult([renderCustomPalette(customColors)]);
+};
 
-/* Inventaire */
+/* Inventaire : peintures possédées */
 function renderInventory(){
   const box=$("#invList");box.innerHTML="";
   if(!INV.length){box.innerHTML='<span class="inv-empty">Aucune peinture. Clique sur « Ajouter des peintures ».</span>';}
@@ -496,6 +581,27 @@ function renderInventory(){
     box.appendChild(el);
   });
   $("#invCount").textContent=INV.length?`${INV.length} peinture(s) dans ton inventaire.`:"";
+}
+
+/* Inventaire : palettes enregistrées */
+function renderSaved(){
+  const box=$("#savedList");box.innerHTML="";
+  if(!SAVED.length){box.innerHTML='<span class="inv-empty">Aucune palette enregistrée. Génère ou crée une palette puis « 💾 Enregistrer ».</span>';return;}
+  SAVED.forEach((pal,idx)=>{
+    const card=document.createElement("div");card.className="saved";
+    const strip=pal.items.map(it=>`<div style="background:${it.hex}"></div>`).join("");
+    const names=pal.items.map(it=>`${BRAND_LABEL[it.brand]} ${it.name}`).join(" · ");
+    card.innerHTML=`<div class="saved-strip">${strip}</div>
+      <div class="saved-title">${pal.title}</div>
+      <div class="saved-names">${names}</div>`;
+    const bar=document.createElement("div");bar.className="saved-bar";
+    const addBtn=document.createElement("button");addBtn.className="mini";addBtn.textContent="＋ Peintures à l'inventaire";
+    addBtn.onclick=()=>{let n=0;pal.items.forEach(it=>{if(invAdd(it))n++;});saveInv();renderInventory();toast(n?n+" peinture(s) ajoutée(s)":"Déjà dans l'inventaire");};
+    const del=document.createElement("button");del.className="mini danger";del.textContent="Supprimer";
+    del.onclick=()=>{SAVED.splice(idx,1);saveSaved();renderSaved();};
+    bar.appendChild(addBtn);bar.appendChild(del);card.appendChild(bar);
+    box.appendChild(card);
+  });
 }
 
 /* Fenêtre de recherche de peinture */
@@ -543,6 +649,7 @@ document.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{
   const m=t.dataset.mode;
   $("#pickMode").hidden=m!=="pick";
   $("#randomMode").hidden=m!=="random";
+  $("#customMode").hidden=m!=="custom";
   $("#inventoryMode").hidden=m!=="inventory";
   $("#brandCard").hidden=m==="inventory";
   $("#result").innerHTML='<div class="empty">Configure ci-dessus puis lance la génération.</div>';
@@ -556,8 +663,10 @@ function copy(txt){navigator.clipboard?.writeText(txt).catch(()=>{});toast("Copi
 
 /* Init */
 renderColorInputs();
+renderCustomInputs();
 renderBrandChips();
 renderInventory();
+renderSaved();
 renderChips("#pickChips","pick",[["all","Toutes"]]);
 renderChips("#randChips","rand",[["random","Surprise 🎲"]]);
 renderChips("#invChips","inv",[["random","Surprise 🎲"]]);

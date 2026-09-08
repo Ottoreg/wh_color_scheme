@@ -13,9 +13,14 @@ peintures Citadel.
    parmi les 3 marques.
 2. **Hasard** — l'app tire une couleur au hasard mais construit une palette qui
    respecte la règle d'harmonie choisie.
-3. **Inventaire** — tu listes les peintures que tu possèdes (sauvegardées dans le
+3. **Créer** — tu assembles **librement** ta propre palette (nuancier ou peinture
+   par nom), sans aucune règle d'harmonie : c'est toi qui décides.
+4. **Inventaire** — tu listes les peintures que tu possèdes (sauvegardées dans le
    navigateur) et l'app génère des color schemes **uniquement** avec tes
    couleurs : chaque couleur cible est remplacée par ta peinture la plus proche.
+   Tu peux aussi **enregistrer une palette** (générée ou créée à la main) dans
+   l'inventaire via le bouton **💾 Enregistrer**, puis la retrouver, la
+   supprimer, ou ajouter ses peintures à ta liste de peintures possédées.
 
 Chaque couleur proposée est reliée à la **peinture la plus proche** de la marque
 choisie. Marques supportées : **Citadel**, **Vallejo**, **Army Painter**, ou
