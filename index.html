@@ -150,14 +150,28 @@
   .pitem.owned{opacity:.5}
   .pitem.owned .nm::after{content:" ✓"; color:var(--gold)}
 
+  /* voile "passez en portrait" */
+  .rotate{position:fixed; inset:0; z-index:200; display:none; flex-direction:column;
+    align-items:center; justify-content:center; text-align:center; gap:10px; padding:32px;
+    background:radial-gradient(120% 80% at 50% 0%, #2a2015 0%, var(--bg) 60%); color:var(--text)}
+  .rotate .rot-ico{font-size:52px; animation:tilt 1.8s ease-in-out infinite}
+  .rotate .rot-title{font-size:20px; font-weight:800}
+  .rotate p{margin:0; color:var(--muted); font-size:14px; max-width:280px}
+  @keyframes tilt{0%,55%{transform:rotate(0)}70%,100%{transform:rotate(-90deg)}}
+  @media (orientation:landscape) and (max-height:560px){
+    header,.wrap{display:none!important}
+    .rotate{display:flex}
+  }
+  @media (prefers-reduced-motion:reduce){.rotate .rot-ico{animation:none}}
+
   [hidden]{display:none!important}
 </style>
 </head>
 <body>
 <header>
-  <div class="kicker">Citadel Colour Assistant</div>
+  <div class="kicker">Citadel · Vallejo · Army Painter</div>
   <h1>Warhammer Palette</h1>
-  <p>Des palettes harmonieuses pour peindre tes figurines</p>
+  <p>Palettes harmonieuses, création libre &amp; inventaire de peintures</p>
 </header>
 
 <div class="wrap">
@@ -249,6 +263,12 @@
     <div class="chips modal-brand" id="modalBrand"></div>
     <div class="plist" id="plist"></div>
   </div>
+</div>
+
+<div class="rotate" id="rotate">
+  <div class="rot-ico">📱</div>
+  <div class="rot-title">Tourne ton téléphone</div>
+  <p>Cette app s'utilise en mode portrait.</p>
 </div>
 
 <div class="toast" id="toast"></div>
@@ -672,6 +692,9 @@ let tt;
 function toast(txt){const el=$("#toast");el.textContent=txt;el.classList.add("show");
   clearTimeout(tt);tt=setTimeout(()=>el.classList.remove("show"),1500);}
 function copy(txt){navigator.clipboard?.writeText(txt).catch(()=>{});toast("Copié : "+txt);}
+
+/* Verrouillage portrait natif (effectif seulement en plein écran / PWA) */
+try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock("portrait").catch(()=>{});}catch(e){}
 
 /* Init */
 renderColorInputs();
