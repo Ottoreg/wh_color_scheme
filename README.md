@@ -12,7 +12,10 @@ peintures Citadel.
 2. **Au hasard** — l'app tire une couleur au hasard mais construit une palette qui
    respecte la règle d'harmonie choisie.
 
-Chaque couleur proposée est reliée à la **peinture Citadel la plus proche** (nom + hex).
+Chaque couleur proposée est reliée à la **peinture la plus proche** de la marque
+choisie. Marques supportées : **Citadel**, **Vallejo**, **Army Painter**, ou
+**Toutes** (dans ce cas les trois équivalents sont affichés à la suite). Au sein
+d'une même palette, une peinture n'est jamais proposée deux fois.
 
 ## Tester
 

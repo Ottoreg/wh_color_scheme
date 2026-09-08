@@ -72,7 +72,11 @@
   .paint .dot{width:34px; height:34px; border-radius:8px; flex:none; border:1px solid #0007}
   .paint .info{min-width:0; flex:1}
   .paint .name{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-  .paint .meta{font-size:11px; color:var(--muted)}
+  .paint .allnames{display:flex; flex-direction:column; gap:2px}
+  .paint .bn{font-size:13px; font-weight:600; line-height:1.25}
+  .paint .bn em{display:inline-block; min-width:76px; font-style:normal; color:var(--gold); font-size:10px;
+    letter-spacing:.06em; text-transform:uppercase; font-weight:700}
+  .paint .meta{font-size:11px; color:var(--muted); margin-top:2px}
   .paint .role{font-size:10px; letter-spacing:.1em; text-transform:uppercase; color:var(--gold); font-weight:700}
 
   .empty{text-align:center; color:var(--muted); font-size:13px; padding:30px 10px}
@@ -96,6 +100,12 @@
   <div class="tabs">
     <button class="tab active" data-mode="pick">🎨 Mes couleurs</button>
     <button class="tab" data-mode="random">🎲 Au hasard</button>
+  </div>
+
+  <div class="card">
+    <p class="label">Marque de peinture</p>
+    <div class="chips" id="brandChips"></div>
+    <p class="hint">« Toutes » affiche l'équivalent des trois marques, à la suite, pour chaque couleur.</p>
   </div>
 
   <!-- MODE 1 : couleurs choisies -->
@@ -123,53 +133,72 @@
   </section>
 
   <div class="result" id="result">
-    <div class="empty">Configure ci-dessus puis lance la génération.<br>Les couleurs proposées seront associées aux peintures Citadel les plus proches.</div>
+    <div class="empty">Configure ci-dessus puis lance la génération.<br>Les couleurs proposées seront associées aux peintures les plus proches de la marque choisie.</div>
   </div>
 
   <footer>
-    Correspondances = peinture Citadel la plus proche (valeurs approximatives).<br>
-    Warhammer &amp; Citadel sont des marques de Games Workshop. App non officielle.
+    Correspondances = peinture la plus proche par marque (Citadel · Vallejo · Army Painter), valeurs approximatives.<br>
+    Marques citées appartenant à leurs propriétaires respectifs. App non officielle.
   </footer>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-/* ---------- Base de peintures Citadel (hex approximatifs) ---------- */
-const PAINTS = [
-  // Rouges
+/* ---------- Bases de peintures par marque (hex approximatifs) ---------- */
+const CITADEL = [
   ["Khorne Red","#6b1113"],["Mephiston Red","#96110f"],["Evil Sunz Scarlet","#c21a12"],
   ["Wild Rider Red","#e23b28"],["Wazdakka Red","#a80c10"],
-  // Oranges
   ["Jokaero Orange","#e8431f"],["Troll Slayer Orange","#ef6f34"],["Fire Dragon Bright","#f59a3c"],
-  // Jaunes
   ["Averland Sunset","#f6b41a"],["Yriel Yellow","#ffcf12"],["Flash Gitz Yellow","#fff02a"],["Dorn Yellow","#efe07a"],
-  // Verts
   ["Caliban Green","#0c3a20"],["Warpstone Glow","#1f7a3c"],["Warboss Green","#3f8b3a"],
   ["Moot Green","#46b64a"],["Nurgling Green","#a7bd57"],["Death World Forest","#6d7b3a"],
-  // Turquoises
   ["Stegadon Scale Green","#12484e"],["Sotek Green","#0e6e7a"],["Temple Guard Blue","#3fa9a0"],
-  // Bleus
   ["Kantor Blue","#12244c"],["Macragge Blue","#12417c"],["Altdorf Guard Blue","#2a63b0"],
   ["Calgar Blue","#3c80c6"],["Teclis Blue","#2f8fd4"],["Lothern Blue","#54b8e2"],["Caledor Sky","#4a7fb2"],
-  // Violets
-  ["Naggaroth Night","#372a48"],["Xereus Purple","#4b2a6c"],["Genestealer Purple","#6f4aa0"],
-  ["Daemonette Hide","#6f6b8c"],
-  // Roses / magentas
+  ["Naggaroth Night","#372a48"],["Xereus Purple","#4b2a6c"],["Genestealer Purple","#6f4aa0"],["Daemonette Hide","#6f6b8c"],
   ["Screamer Pink","#7a1a3c"],["Pink Horror","#9e3a6e"],["Emperor's Children","#c94a8c"],
   ["Fulgrim Pink","#e58cb2"],["Changeling Pink","#d16fa4"],
-  // Bruns
   ["Rhinox Hide","#3a2a28"],["Mournfang Brown","#6d3a1e"],["Doombull Brown","#6f2a1e"],
   ["XV-88","#7c5a2c"],["Balor Brown","#8c6a2c"],["Zamesi Desert","#c9a94a"],
   ["Ushabti Bone","#c8b98c"],["Screaming Skull","#d7d1aa"],
-  // Chairs
   ["Bugman's Glow","#6c3a30"],["Cadian Fleshtone","#b76c4c"],["Kislev Flesh","#da9c70"],["Rakarth Flesh","#9f9b8c"],
-  // Neutres
   ["Abaddon Black","#201c1a"],["Corvus Black","#2e3138"],["Eshin Grey","#3c4045"],
   ["Dawnstone","#6f7278"],["Administratum Grey","#9fa3a3"],["White Scar","#f2f3f3"],
-  // Métalliques
   ["Leadbelcher","#8b8e90"],["Retributor Gold","#b28a2c"]
-].filter(Boolean);
+];
+const VALLEJO = [
+  ["Gory Red","#7a1418"],["Bloody Red","#b01a1a"],["Scarlett Red","#c8201a"],["Squig Orange","#df3a1e"],
+  ["Hot Orange","#e8551f"],["Orange Fire","#f07a2a"],["Sun Yellow","#f7c11a"],["Gold Yellow","#f4d43a"],
+  ["Moon Yellow","#f2e15a"],["Escorpena Green","#1f7a3c"],["Goblin Green","#3f8b3a"],["Scurvy Green","#5a8a4a"],
+  ["Sick Green","#8a9a3a"],["Livery Green","#a7bd57"],["Jade Green","#2a9a7a"],["Emerald","#12484e"],
+  ["Turquoise","#0e6e7a"],["Foul Green","#3fa9a0"],["Imperial Blue","#12244c"],["Ultramarine Blue","#22409a"],
+  ["Magic Blue","#2f5fc0"],["Electric Blue","#2a6fd0"],["Stormy Blue","#3c80c6"],["Falcon Turquoise","#54b8e2"],
+  ["Night Blue","#372a48"],["Warlord Purple","#5a2a6a"],["Hexed Lichen","#6f4a8a"],["Heavy Violet","#6f6b8c"],
+  ["Purple","#7a1a3c"],["Squid Pink","#b04a7a"],["Pale Pink","#e58cb2"],["Rosy Flesh","#d16fa4"],
+  ["Charred Brown","#3a2a24"],["Beasty Brown","#5a3a2a"],["Leather Brown","#6d3a1e"],["Cobra Leather","#7a5a3a"],
+  ["Desert Yellow","#c9a94a"],["Bonewhite","#d7d0aa"],["Dead Flesh","#b7bda0"],["Tan","#c9a06a"],
+  ["Heavy Skintone","#b76c4c"],["Sunny Skintone","#da9c70"],["Cadmium Skin","#6c3a30"],["Pale Flesh","#9f9b8c"],
+  ["Black","#1a1a1a"],["Neutral Grey","#3c4045"],["Cold Grey","#6f7278"],["Stonewall Grey","#9fa3a3"],
+  ["Dead White","#f2f3f3"],["Gunmetal","#8b8e90"],["Brassy Brass","#b28a2c"]
+];
+const ARMYPAINTER = [
+  ["Dragon Red","#8a1418"],["Pure Red","#c21a1a"],["Mars Red","#a80c10"],["Lava Orange","#e8551f"],
+  ["Fanatic Orange","#ef6f34"],["Glorious Gold Orange","#f59a3c"],["Daemonic Yellow","#f7c11a"],["Lightning Yellow","#ffcf12"],
+  ["Phoenix Flames","#fff02a"],["Desert Yellow","#efe07a"],["Angel Green","#1f5a2a"],["Greenskin","#3f7a3a"],
+  ["Goblin Green","#4a8b3a"],["Army Green","#5a6a3a"],["Necrotic Flesh","#a7bd8a"],["Snake Scales","#2a9a7a"],
+  ["Hydra Turquoise","#12484e"],["Deep Ocean Blue","#0e6e7a"],["Turquoise","#3fa9a0"],["Deep Blue","#12244c"],
+  ["Ultramarine Blue","#22409a"],["Wolf Grey Blue","#2f5fc0"],["Crystal Blue","#2f7fd0"],["Electric Blue","#3a9fd4"],
+  ["Frost Blue","#54b8e2"],["Night Blue","#372a48"],["Warlock Purple","#4b2a6c"],["Alien Purple","#6f4aa0"],
+  ["Wizards Orb","#6f6b8c"],["Oozing Purple","#7a2a5a"],["Pixie Pink","#d16fa4"],["Barbarian Flesh Pink","#e58cb2"],
+  ["Dark Stone","#3a2a28"],["Fur Brown","#5a3a2a"],["Leather Brown","#6d3a1e"],["Dirt Spatter","#6a5a4a"],
+  ["Skeleton Bone","#c8b98c"],["Ash Grey Bone","#d7d1aa"],["Tundra Grey","#b7bda0"],["Tanned Flesh","#a05a3a"],
+  ["Barbarian Flesh","#b76c4c"],["Kobold Skin","#da9c70"],["Mummy Robes","#c9a06a"],["Werewolf Fur","#6c3a30"],
+  ["Matt Black","#1a1a1a"],["Uniform Grey","#3c4045"],["Wolf Grey","#6f7278"],["Ash Grey","#9fa3a3"],
+  ["Matt White","#f2f3f3"],["Gun Metal","#8b8e90"],["Weapon Bronze","#b28a2c"]
+];
+const BRANDS={citadel:CITADEL, vallejo:VALLEJO, armypainter:ARMYPAINTER};
+const BRAND_LABEL={citadel:"Citadel", vallejo:"Vallejo", armypainter:"Army Painter"};
 
 /* ---------- Conversions couleur ---------- */
 function hexToRgb(h){h=h.replace('#','');return{r:parseInt(h.slice(0,2),16),g:parseInt(h.slice(2,4),16),b:parseInt(h.slice(4,6),16)};}
@@ -178,13 +207,17 @@ function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.m
 function hslToRgb(h,s,l){h/=360;s/=100;l/=100;let r,g,b;if(s===0){r=g=b=l;}else{const hue2=(p,q,t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};const q=l<0.5?l*(1+s):l+s-l*s;const p=2*l-q;r=hue2(p,q,h+1/3);g=hue2(p,q,h);b=hue2(p,q,h-1/3);}return{r:r*255,g:g*255,b:b*255};}
 function hslToHex(h,s,l){const{r,g,b}=hslToRgb(((h%360)+360)%360,Math.max(0,Math.min(100,s)),Math.max(0,Math.min(100,l)));return rgbToHex(r,g,b);}
 
-/* Distance perceptuelle (redmean) pour trouver la peinture la plus proche */
-function nearestPaint(hex){
-  const a=hexToRgb(hex);let best=null,bd=Infinity;
-  for(const[name,ph]of PAINTS){const b=hexToRgb(ph);const rm=(a.r+b.r)/2;
-    const dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b;
-    const d=Math.sqrt((2+rm/256)*dr*dr+4*dg*dg+(2+(255-rm)/256)*db*db);
+/* Distance perceptuelle (redmean) — peinture la plus proche, en évitant les doublons */
+function colorDist(a,ph){const b=hexToRgb(ph);const rm=(a.r+b.r)/2;
+  const dr=a.r-b.r,dg=a.g-b.g,db=a.b-b.b;
+  return Math.sqrt((2+rm/256)*dr*dr+4*dg*dg+(2+(255-rm)/256)*db*db);}
+function nearestPaint(hex,list,exclude){
+  const a=hexToRgb(hex);let best=null,bd=Infinity,fb=null,fd=Infinity;
+  for(const[name,ph]of list){const d=colorDist(a,ph);
+    if(d<fd){fd=d;fb=[name,ph];}                         // meilleur absolu (secours)
+    if(exclude&&exclude.has(name))continue;
     if(d<bd){bd=d;best=[name,ph];}}
+  best=best||fb;                                         // si tout est déjà pris
   return{name:best[0],hex:best[1]};
 }
 
@@ -223,6 +256,18 @@ const $=s=>document.querySelector(s);
 let baseColors=["#2a63b0"]; // Altdorf Guard Blue par défaut
 let pickHarmony="all";
 let randHarmony="random";
+let brand="citadel";        // citadel | vallejo | armypainter | all
+
+function renderBrandChips(){
+  const box=$("#brandChips");box.innerHTML="";
+  const entries=[["citadel","Citadel"],["vallejo","Vallejo"],["armypainter","Army Painter"],["all","Toutes"]];
+  entries.forEach(([k,label])=>{
+    const c=document.createElement("button");c.className="chip"+(k===brand?" active":"");
+    c.textContent=label;
+    c.onclick=()=>{brand=k;renderBrandChips();};
+    box.appendChild(c);
+  });
+}
 
 function renderColorInputs(){
   const box=$("#colorList");box.innerHTML="";
@@ -252,14 +297,31 @@ function renderChips(container,harmonyVar,extra){
   });
 }
 
-function paintRow(hex,role){
-  const p=nearestPaint(hex);
+function activeBrands(){return brand==="all"?["citadel","vallejo","armypainter"]:[brand];}
+
+// `used` = { brandKey: Set(noms déjà proposés) } pour éviter les doublons dans une même palette
+function paintRow(hex,role,used){
+  const picks=activeBrands().map(b=>{
+    const p=nearestPaint(hex,BRANDS[b],used[b]);
+    used[b].add(p.name);
+    return {b,...p};
+  });
   const div=document.createElement("div");div.className="paint";
-  div.innerHTML=`<div class="dot" style="background:${p.hex}"></div>
-    <div class="info"><div class="name">${p.name}</div>
-    <div class="meta">${p.hex.toUpperCase()} · cible ${hex.toUpperCase()}</div></div>
+  const dotHex = brand==="all" ? hex : picks[0].hex;
+  let namesHtml;
+  if(brand==="all"){
+    namesHtml=`<div class="allnames">`+picks.map(p=>
+      `<span class="bn"><em>${BRAND_LABEL[p.b]}</em> ${p.name}</span>`).join("")+`</div>`;
+  }else{
+    namesHtml=`<div class="name">${picks[0].name}</div>`;
+  }
+  const meta = brand==="all"
+    ? `cible ${hex.toUpperCase()}`
+    : `${picks[0].hex.toUpperCase()} · cible ${hex.toUpperCase()}`;
+  div.innerHTML=`<div class="dot" style="background:${dotHex}"></div>
+    <div class="info">${namesHtml}<div class="meta">${meta}</div></div>
     <div class="role">${role}</div>`;
-  div.onclick=()=>copy(p.name+" ("+p.hex.toUpperCase()+")");
+  div.onclick=()=>copy(picks.map(p=>BRAND_LABEL[p.b]+" : "+p.name).join("  |  "));
   return div;
 }
 
@@ -271,7 +333,8 @@ function renderPalette(baseHex,key){
   pal.innerHTML=`<div class="pal-head"><h3>${H.name}</h3><span class="base">base ${baseHex.toUpperCase()}</span></div>
     <p class="pal-desc">${H.desc}</p><div class="strip">${strip}</div>`;
   const paints=document.createElement("div");paints.className="paints";
-  cols.forEach((c,i)=>paints.appendChild(paintRow(c,roleFor(i,cols.length))));
+  const used={citadel:new Set(),vallejo:new Set(),armypainter:new Set()};
+  cols.forEach((c,i)=>paints.appendChild(paintRow(c,roleFor(i,cols.length),used)));
   pal.appendChild(paints);
   return pal;
 }
@@ -315,6 +378,7 @@ function copy(txt){
 
 /* Init */
 renderColorInputs();
+renderBrandChips();
 renderChips("#pickChips","pick",[["all","Toutes"]]);
 renderChips("#randChips","rand",[["random","Surprise 🎲"]]);
 </script>
