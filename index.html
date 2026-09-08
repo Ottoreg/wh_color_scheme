@@ -118,6 +118,8 @@
   .saved-strip{display:flex; border-radius:8px; overflow:hidden; border:1px solid #0006; margin-bottom:8px}
   .saved-strip div{flex:1; height:26px}
   .saved-title{font-size:14px; font-weight:700}
+  .rename-input{width:100%; background:var(--bg2); border:1px solid var(--gold); color:var(--text);
+    font-size:14px; font-weight:700; padding:6px 8px; border-radius:8px; outline:none}
   .saved-names{font-size:11px; color:var(--muted); margin-top:2px; line-height:1.35}
   .saved-bar{display:flex; gap:8px; margin-top:10px}
   .mini{flex:1; border:1px solid var(--line); background:var(--bg2); color:var(--text); font-weight:600;
@@ -595,11 +597,21 @@ function renderSaved(){
       <div class="saved-title">${pal.title}</div>
       <div class="saved-names">${names}</div>`;
     const bar=document.createElement("div");bar.className="saved-bar";
-    const addBtn=document.createElement("button");addBtn.className="mini";addBtn.textContent="＋ Peintures à l'inventaire";
+    const renameBtn=document.createElement("button");renameBtn.className="mini";renameBtn.textContent="✏️ Renommer";
+    renameBtn.onclick=()=>{
+      const titleEl=card.querySelector(".saved-title");
+      const input=document.createElement("input");input.className="rename-input";input.value=pal.title;
+      let done=false;
+      const commit=()=>{if(done)return;done=true;const v=input.value.trim();if(v)pal.title=v;saveSaved();renderSaved();};
+      input.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();commit();}else if(e.key==="Escape"){done=true;renderSaved();}});
+      input.addEventListener("blur",commit);
+      titleEl.replaceWith(input);input.focus();input.select();
+    };
+    const addBtn=document.createElement("button");addBtn.className="mini";addBtn.textContent="＋ Inventaire";
     addBtn.onclick=()=>{let n=0;pal.items.forEach(it=>{if(invAdd(it))n++;});saveInv();renderInventory();toast(n?n+" peinture(s) ajoutée(s)":"Déjà dans l'inventaire");};
-    const del=document.createElement("button");del.className="mini danger";del.textContent="Supprimer";
+    const del=document.createElement("button");del.className="mini danger";del.textContent="Suppr.";
     del.onclick=()=>{SAVED.splice(idx,1);saveSaved();renderSaved();};
-    bar.appendChild(addBtn);bar.appendChild(del);card.appendChild(bar);
+    bar.appendChild(renameBtn);bar.appendChild(addBtn);bar.appendChild(del);card.appendChild(bar);
     box.appendChild(card);
   });
 }
