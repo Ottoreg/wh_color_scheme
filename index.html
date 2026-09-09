@@ -3,7 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#1a1410">
+<meta name="theme-color" content="#15110d">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Wargame Palette">
 <title>Wargame Palette</title>
 <style>
   :root{
@@ -154,6 +161,15 @@
   .save-row{display:flex; gap:10px}
   .save-row .btn2{flex:1}
 
+  .install-btn{margin-top:12px; border:1px solid var(--gold); background:rgba(201,162,75,.12);
+    color:var(--gold2); font-weight:700; font-size:13px; padding:9px 16px; border-radius:20px; cursor:pointer}
+  .install-btn:active{background:rgba(201,162,75,.22)}
+  .ihelp{overflow-y:auto; padding:6px 2px 4px}
+  .ihelp p{font-size:13.5px; line-height:1.45; color:var(--text)}
+  .ihelp-block{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin:12px 0}
+  .ihelp-t{font-weight:700; font-size:14px; margin-bottom:6px}
+  .ihelp ol{margin:0; padding-left:18px; font-size:13px; line-height:1.6; color:var(--text)}
+
   /* feuille d'impression A4 (cachée à l'écran) */
   .print-sheet{display:none}
   @media print{
@@ -194,6 +210,7 @@
   <div class="kicker">Citadel · Vallejo · Army Painter</div>
   <h1>Wargame Palette</h1>
   <p>Palettes harmonieuses, création libre &amp; inventaire de peintures</p>
+  <button class="install-btn" id="installBtn" hidden>📲 Installer l'app</button>
 </header>
 
 <div class="wrap">
@@ -295,6 +312,31 @@
     </div>
     <div class="chips modal-brand" id="modalBrand"></div>
     <div class="plist" id="plist"></div>
+  </div>
+</div>
+
+<!-- Aide à l'installation -->
+<div class="modal" id="installHelp" hidden>
+  <div class="sheet" style="max-height:none">
+    <div class="sheet-head">
+      <div style="flex:1;font-weight:800;font-size:16px">Installer l'app</div>
+      <button class="closeX" id="closeInstall">✕</button>
+    </div>
+    <div class="ihelp">
+      <p>Ajoute Wargame Palette à ton écran d'accueil pour l'ouvrir comme une vraie app, même <b>hors-ligne</b>.</p>
+      <div class="ihelp-block">
+        <div class="ihelp-t">📱 iPhone / iPad (Safari)</div>
+        <ol><li>Touche l'icône <b>Partager</b> (le carré avec la flèche ↑)</li>
+        <li>Choisis <b>« Sur l'écran d'accueil »</b></li>
+        <li>Confirme avec <b>Ajouter</b></li></ol>
+      </div>
+      <div class="ihelp-block">
+        <div class="ihelp-t">🤖 Android (Chrome)</div>
+        <ol><li>Menu <b>⋮</b> en haut à droite</li>
+        <li><b>« Installer l'application »</b> ou <b>« Ajouter à l'écran d'accueil »</b></li></ol>
+      </div>
+      <p class="hint">Astuce : ouvre d'abord l'app une fois en ligne, puis elle fonctionnera sans connexion.</p>
+    </div>
   </div>
 </div>
 
@@ -787,6 +829,26 @@ function copy(txt){navigator.clipboard?.writeText(txt).catch(()=>{});toast("Copi
 
 /* Verrouillage portrait natif (effectif seulement en plein écran / PWA) */
 try{if(screen.orientation&&screen.orientation.lock)screen.orientation.lock("portrait").catch(()=>{});}catch(e){}
+
+/* PWA : service worker (hors-ligne) + bouton d'installation */
+if("serviceWorker" in navigator){
+  window.addEventListener("load",()=>{navigator.serviceWorker.register("sw.js").catch(()=>{});});
+}
+(function(){
+  const btn=$("#installBtn");if(!btn)return;
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone===true;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  let deferred=null;
+  window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferred=e;btn.hidden=false;});
+  window.addEventListener("appinstalled",()=>{btn.hidden=true;toast("App installée 🎉");});
+  if(!standalone && isIOS) btn.hidden=false;           // iOS : pas d'event, on montre le bouton
+  btn.onclick=async()=>{
+    if(deferred){deferred.prompt();try{await deferred.userChoice;}catch(e){}deferred=null;btn.hidden=true;}
+    else{$("#installHelp").hidden=false;}               // pas de prompt natif (iOS, ou déjà géré) → aide
+  };
+  $("#closeInstall").onclick=()=>{$("#installHelp").hidden=true;};
+  $("#installHelp").onclick=e=>{if(e.target===$("#installHelp"))$("#installHelp").hidden=true;};
+})();
 
 /* Init */
 renderColorInputs();
