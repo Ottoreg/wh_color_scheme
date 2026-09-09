@@ -174,8 +174,11 @@
   .print-sheet{display:none}
   @media print{
     @page{size:A4 portrait; margin:12mm}
+    html,body{background:#fff!important; color:#111!important}
+    body{padding:0!important}
     body>*{display:none!important}
-    .print-sheet{display:block!important; color:#111; font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+    .print-sheet{display:block!important; background:#fff; color:#111; font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+    .print-sheet *{-webkit-print-color-adjust:exact!important; print-color-adjust:exact!important}
     .print-h{border-bottom:2px solid #111; padding-bottom:6px; margin-bottom:10px}
     .print-h h1{margin:0; font-size:18pt}
     .print-h .print-sub{font-size:9pt; color:#555; margin-top:2px}
