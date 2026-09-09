@@ -291,6 +291,12 @@
       </div>
       <input type="file" id="importFile" accept="application/json,.json" hidden>
     </div>
+
+    <div class="card">
+      <p class="label">Version locale</p>
+      <p class="hint" style="margin-top:0">Télécharge toute l'app dans un seul fichier <b>.html</b> autonome : garde-le sur ton téléphone pour l'ouvrir hors-ligne, ou envoie-le à quelqu'un (message, AirDrop…). Il s'ouvre depuis l'app Fichiers.</p>
+      <button class="btn2" id="downloadApp" style="margin:0">📥 Télécharger l'app (fichier .html)</button>
+    </div>
   </section>
 
   <div class="result" id="result">
@@ -765,10 +771,31 @@ function importData(file){
   };
   r.readAsText(file);
 }
+// Télécharge l'app entière en un seul fichier HTML autonome (ouvrable hors-ligne)
+async function downloadApp(){
+  let htmlText=null;
+  try{
+    const res=await fetch(location.href,{cache:"no-store"});
+    const t=await res.text();
+    if(t&&/Wargame Palette/.test(t)) htmlText=t;
+  }catch(e){}
+  if(!htmlText) htmlText="<!DOCTYPE html>\n"+document.documentElement.outerHTML; // repli
+  let ok=false;
+  try{
+    const blob=new Blob([htmlText],{type:"text/html"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="wargame-palette.html";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),3000);ok=true;
+  }catch(e){}
+  toast(ok?"App téléchargée : wargame-palette.html":"Téléchargement bloqué ici (essaie sur le site publié)");
+}
+
 $("#printInv").onclick=()=>printNuancier(INV,"Mon nuancier");
 $("#exportData").onclick=exportData;
 $("#importBtn").onclick=()=>$("#importFile").click();
 $("#importFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)importData(f);e.target.value="";});
+$("#downloadApp").onclick=downloadApp;
 
 /* Fenêtre de recherche de peinture */
 let modalPick=null;
