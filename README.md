@@ -1,8 +1,8 @@
-# Warhammer Palette 🎨
+# Wargame Palette 🎨
 
 Petite app mobile (une seule page HTML, sans build) pour aider à peindre des figurines
-Warhammer. Basée sur la théorie des couleurs (roue chromatique) et associée aux
-peintures Citadel.
+de wargame. Basée sur la théorie des couleurs (roue chromatique) et associée aux
+gammes de peintures Citadel, Vallejo et Army Painter.
 
 ## Trois usages
 
@@ -32,7 +32,10 @@ d'une même palette, une peinture n'est jamais proposée deux fois.
 Ouvre simplement `index.html` dans un navigateur (mobile ou desktop), ou via ce lien
 qui rend le fichier directement depuis le repo :
 
-👉 https://htmlpreview.github.io/?https://raw.githubusercontent.com/Ottoreg/wh_color_scheme/claude/warhammer-palette-mobile-app-qsgej1/index.html
+👉 https://htmlpreview.github.io/?https://raw.githubusercontent.com/Ottoreg/wh_color_scheme/main/index.html
 
-> Les valeurs hex des peintures Citadel sont approximatives. Warhammer & Citadel
-> sont des marques de Games Workshop. App non officielle.
+Une fois GitHub Pages activé : https://ottoreg.github.io/wh_color_scheme/
+
+> Les valeurs hex des peintures sont approximatives. Les noms de gammes et de
+> peintures (Citadel, Vallejo, Army Painter) appartiennent à leurs propriétaires
+> respectifs. App non officielle, sans affiliation.
