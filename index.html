@@ -108,6 +108,7 @@
 
   /* bouton enregistrer sur une palette */
   .pal-head{align-items:center}
+  .pal-acts{display:flex; gap:6px; flex:none}
   .saveBtn{border:1px solid var(--gold); background:transparent; color:var(--gold2); font-weight:700;
     font-size:12px; padding:6px 10px; border-radius:9px; cursor:pointer; white-space:nowrap}
   .saveBtn:active{background:#2a2015}
@@ -149,6 +150,27 @@
   .pitem .bl{font-size:10px; text-transform:uppercase; letter-spacing:.06em; color:var(--gold); font-weight:700}
   .pitem.owned{opacity:.5}
   .pitem.owned .nm::after{content:" ✓"; color:var(--gold)}
+
+  .save-row{display:flex; gap:10px}
+  .save-row .btn2{flex:1}
+
+  /* feuille d'impression A4 (cachée à l'écran) */
+  .print-sheet{display:none}
+  @media print{
+    @page{size:A4 portrait; margin:12mm}
+    body>*{display:none!important}
+    .print-sheet{display:block!important; color:#111; font-family:-apple-system,Segoe UI,Roboto,sans-serif}
+    .print-h{border-bottom:2px solid #111; padding-bottom:6px; margin-bottom:10px}
+    .print-h h1{margin:0; font-size:18pt}
+    .print-h .print-sub{font-size:9pt; color:#555; margin-top:2px}
+    .print-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:6mm 5mm}
+    .pcard{border:1px solid #bbb; border-radius:5px; overflow:hidden; break-inside:avoid; -webkit-print-color-adjust:exact; print-color-adjust:exact}
+    .pcard .sw{height:20mm}
+    .pcard .cap{padding:4px 6px}
+    .pcard .nm{font-size:10pt; font-weight:700; line-height:1.15}
+    .pcard .mt{font-size:8pt; color:#444; margin-top:2px}
+    .print-foot{margin-top:10mm; font-size:8pt; color:#666; text-align:center}
+  }
 
   /* voile "passez en portrait" */
   .rotate{position:fixed; inset:0; z-index:200; display:none; flex-direction:column;
@@ -229,6 +251,7 @@
       <button class="btn2" id="addPaintInv">＋ Ajouter des peintures</button>
       <div class="inv-list" id="invList"></div>
       <p class="hint" id="invCount"></p>
+      <button class="btn2" id="printInv" style="margin:12px 0 0">🖨️ Imprimer le nuancier (A4)</button>
     </div>
     <div class="card">
       <p class="label">Type de palette</p>
@@ -240,6 +263,16 @@
     <div class="card" style="margin-top:14px">
       <p class="label">Mes palettes enregistrées</p>
       <div class="saved-list" id="savedList"></div>
+    </div>
+
+    <div class="card">
+      <p class="label">Sauvegarde</p>
+      <p class="hint" style="margin-top:0">Exporte tes peintures et palettes dans un fichier, pour les sauvegarder ou les transférer sur un autre appareil.</p>
+      <div class="save-row">
+        <button class="btn2" id="exportData" style="margin:0">⬇️ Exporter</button>
+        <button class="btn2" id="importBtn" style="margin:0">⬆️ Importer</button>
+      </div>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
     </div>
   </section>
 
@@ -264,6 +297,8 @@
     <div class="plist" id="plist"></div>
   </div>
 </div>
+
+<div class="print-sheet" id="printSheet"></div>
 
 <div class="rotate" id="rotate">
   <div class="rot-ico">📱</div>
@@ -514,9 +549,13 @@ function palCard(title,desc,cols,rows,save){
   const pal=document.createElement("div");pal.className="pal";
   const head=document.createElement("div");head.className="pal-head";
   head.innerHTML=`<h3>${title}</h3>`;
+  const acts=document.createElement("div");acts.className="pal-acts";
+  const printB=document.createElement("button");printB.className="saveBtn";printB.textContent="🖨️";printB.title="Imprimer";
+  printB.onclick=()=>printNuancier(save.items,save.title);
   const btn=document.createElement("button");btn.className="saveBtn";btn.textContent="💾 Enregistrer";
   btn.onclick=()=>savePalette(save.title,save.items);
-  head.appendChild(btn);pal.appendChild(head);
+  acts.appendChild(printB);acts.appendChild(btn);
+  head.appendChild(acts);pal.appendChild(head);
   const body=document.createElement("div");
   body.innerHTML=`<p class="pal-desc">${desc}</p><div class="strip">${cols.map(c=>`<div style="background:${c}"></div>`).join("")}</div>`;
   pal.appendChild(body);
@@ -629,12 +668,65 @@ function renderSaved(){
     };
     const addBtn=document.createElement("button");addBtn.className="mini";addBtn.textContent="＋ Inventaire";
     addBtn.onclick=()=>{let n=0;pal.items.forEach(it=>{if(invAdd(it))n++;});saveInv();renderInventory();toast(n?n+" peinture(s) ajoutée(s)":"Déjà dans l'inventaire");};
+    const printB=document.createElement("button");printB.className="mini";printB.textContent="🖨️";printB.title="Imprimer";
+    printB.onclick=()=>printNuancier(pal.items,pal.title);
     const del=document.createElement("button");del.className="mini danger";del.textContent="Suppr.";
     del.onclick=()=>{SAVED.splice(idx,1);saveSaved();renderSaved();};
-    bar.appendChild(renameBtn);bar.appendChild(addBtn);bar.appendChild(del);card.appendChild(bar);
+    bar.appendChild(renameBtn);bar.appendChild(addBtn);bar.appendChild(printB);bar.appendChild(del);card.appendChild(bar);
     box.appendChild(card);
   });
 }
+
+/* Impression du nuancier sur A4 (style fiches de peinture) */
+function esc(s){return String(s).replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));}
+function printNuancier(items,title){
+  if(!items||!items.length){toast("Rien à imprimer");return;}
+  const cards=items.map(it=>`<div class="pcard">
+      <div class="sw" style="background:${it.hex}"></div>
+      <div class="cap"><div class="nm">${esc(it.name)}</div>
+        <div class="mt">${it.brand?BRAND_LABEL[it.brand]+" · ":""}${it.hex.toUpperCase()}</div></div>
+    </div>`).join("");
+  const d=new Date().toLocaleDateString("fr-FR");
+  $("#printSheet").innerHTML=`<div class="print-h"><h1>${esc(title||"Nuancier")}</h1>
+      <div class="print-sub">Wargame Palette · ${items.length} couleur(s) · ${d}</div></div>
+    <div class="print-grid">${cards}</div>
+    <div class="print-foot">Valeurs approximatives — Wargame Palette</div>`;
+  window.print();
+}
+
+/* Sauvegarde : export / import (peintures + palettes) */
+function exportData(){
+  const data={app:"wargame-palette",version:1,exportedAt:new Date().toISOString(),inventory:INV,palettes:SAVED};
+  const json=JSON.stringify(data,null,2);
+  let ok=false;
+  try{
+    const blob=new Blob([json],{type:"application/json"});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement("a");a.href=url;a.download="wargame-palette-sauvegarde.json";
+    document.body.appendChild(a);a.click();a.remove();
+    setTimeout(()=>URL.revokeObjectURL(url),2000);ok=true;
+  }catch(e){}
+  // Repli si le téléchargement est bloqué (ex. aperçu en bac à sable) : copie dans le presse-papier
+  if(navigator.clipboard) navigator.clipboard.writeText(json).catch(()=>{});
+  toast(ok?"Sauvegarde exportée":"Sauvegarde copiée dans le presse-papier");
+}
+function importData(file){
+  const r=new FileReader();
+  r.onload=()=>{
+    try{
+      const d=JSON.parse(r.result);
+      if(Array.isArray(d.inventory)) INV=d.inventory.filter(x=>x&&x.hex&&x.name);
+      if(Array.isArray(d.palettes)) SAVED=d.palettes.filter(x=>x&&Array.isArray(x.items));
+      saveInv();saveSaved();renderInventory();renderSaved();
+      toast("Sauvegarde importée");
+    }catch(e){toast("Fichier invalide");}
+  };
+  r.readAsText(file);
+}
+$("#printInv").onclick=()=>printNuancier(INV,"Mon nuancier");
+$("#exportData").onclick=exportData;
+$("#importBtn").onclick=()=>$("#importFile").click();
+$("#importFile").addEventListener("change",e=>{const f=e.target.files[0];if(f)importData(f);e.target.value="";});
 
 /* Fenêtre de recherche de peinture */
 let modalPick=null;
